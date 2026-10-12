@@ -220,9 +220,19 @@
                 </div>
             </div>
 
-            <!-- Viewport Container -->
+            <!-- Viewport Container (Standard View vs Editor Live Preview Mode) -->
             <div id="canvasContainer" class="flex-1 relative overflow-hidden flex items-center justify-center bg-black/40 rounded-3xl cursor-grab active:cursor-grabbing">
                 <canvas id="imageCanvas" class="max-w-full max-h-full object-contain transition-transform duration-75"></canvas>
+                
+                <!-- Dedicated Large Live Preview Canvas for Edit Tab -->
+                <div id="editorLeftPreviewWrapper" class="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6 hidden z-20">
+                    <div class="absolute top-4 left-4 flex items-center space-x-2 bg-cyan-500/10 border border-cyan-500/20 px-3 py-1.5 rounded-full text-cyan-300 text-xs font-bold">
+                        <i data-lucide="wand-sparkles" class="w-3.5 h-3.5"></i>
+                        <span>Live Edited Canvas Preview</span>
+                    </div>
+                    <canvas id="editorAfterCanvas" class="max-w-full max-h-[80%] rounded-xl shadow-2xl object-contain"></canvas>
+                    <p class="text-[11px] text-slate-400 mt-3">Updates live as you adjust the sliders on the right.</p>
+                </div>
             </div>
 
             <!-- Bottom Telemetry Status Strip -->
@@ -533,25 +543,15 @@
                 <div id="tab-editor" class="space-y-4 hidden">
                     <div class="glass-panel p-4 space-y-2 rounded-2xl border border-cyan-500/20">
                         <h4 class="text-sm font-extrabold text-white flex items-center gap-2"><i data-lucide="wand-sparkles" class="w-4 h-4 text-cyan-300"></i>Basic photo editor</h4>
-                        <p class="text-[11px] text-slate-400 leading-relaxed">The large edited preview stays at the top and updates live as you adjust settings. Your original is untouched; download a separate edited copy when ready.</p>
+                        <p class="text-[11px] text-slate-400 leading-relaxed">The live preview is now displayed prominently on the left viewport panel. Your original image is untouched; download a separate edited copy when ready.</p>
                         <div id="editorEmptyState" class="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">Upload a photo first to enable editing.</div>
                     </div>
-                    
-                    <!-- Sticky Live Edited Preview Container -->
-                    <div class="glass-panel p-3 space-y-3 rounded-2xl border border-cyan-500/30 sticky top-0 z-30 bg-slate-950/90 shadow-2xl backdrop-blur-2xl">
-                        <div class="flex items-center justify-between gap-2">
-                            <div><p class="text-[10px] text-cyan-300 font-bold tracking-wider">LIVE EDITED PREVIEW</p><p class="text-[10px] text-slate-400">Follows you as you scroll through tools.</p></div>
-                            <span id="editorLiveBadge" class="text-[10px] rounded-full px-2 py-1 bg-cyan-500/10 border border-cyan-500/20 text-cyan-200">LIVE</span>
-                        </div>
-                        <div class="w-full rounded-xl bg-black/50 flex items-center justify-center overflow-hidden min-h-[180px]">
-                            <canvas id="editorAfterCanvas" class="w-full rounded-lg" style="max-height: min(45vh, 400px); object-fit:contain"></canvas>
-                            <div id="editorPreviewPlaceholder" class="hidden text-xs text-slate-500 p-8 text-center">Upload a photo to see the live edited preview.</div>
-                        </div>
+
+                    <div class="glass-panel p-3 space-y-2 rounded-2xl border border-white/10">
                         <details class="border border-white/10 rounded-xl p-2">
                             <summary class="text-[10px] text-slate-300 cursor-pointer">Compare with original</summary>
-                            <div class="pt-2"><p class="text-[10px] text-slate-400 mb-1">ORIGINAL</p><canvas id="editorBeforeCanvas" class="w-full rounded-lg bg-black/30" style="max-height:200px;object-fit:contain"></canvas></div>
+                            <div class="pt-2"><p class="text-[10px] text-slate-400 mb-1">ORIGINAL</p><canvas id="editorBeforeCanvas" class="w-full rounded-lg bg-black/30" style="max-height:180px;object-fit:contain"></canvas></div>
                         </details>
-                        <p id="editorPreviewNote" class="text-[10px] text-slate-500">The preview updates as you move sliders. Export keeps the full available image resolution.</p>
                     </div>
 
                     <div class="glass-panel p-4 space-y-4 rounded-2xl border border-white/10">
@@ -803,7 +803,7 @@
             const target = document.createElement('canvas');
             let w = outW, h = outH, previewScale = 1;
             if (preview) {
-                const maxSide = 1000;
+                const maxSide = 1200;
                 previewScale = Math.min(1, maxSide / Math.max(outW, outH));
                 w = Math.max(1, Math.round(outW * previewScale)); h = Math.max(1, Math.round(outH * previewScale));
             }
@@ -829,17 +829,14 @@
                 if (input && label) label.textContent = input.value + labels[name];
             });
             const empty = document.getElementById('editorEmptyState');
-            const placeholder = document.getElementById('editorPreviewPlaceholder');
             const source = appState.editorSourceImage;
             if (!source) {
-                empty.classList.remove('hidden');
-                placeholder.classList.remove('hidden');
+                if (empty) empty.classList.remove('hidden');
                 document.getElementById('editorAfterCanvas').classList.add('hidden');
                 document.getElementById('editorBeforeCanvas').classList.add('hidden');
                 return;
             }
-            empty.classList.add('hidden');
-            placeholder.classList.add('hidden');
+            if (empty) empty.classList.add('hidden');
             const before = document.getElementById('editorBeforeCanvas');
             const after = document.getElementById('editorAfterCanvas');
             before.classList.remove('hidden'); after.classList.remove('hidden');
@@ -849,7 +846,6 @@
             const result = renderEditedCanvas(source, true);
             after.width = result.width; after.height = result.height;
             const actx = after.getContext('2d'); actx.clearRect(0,0,after.width,after.height); actx.drawImage(result,0,0);
-            document.getElementById('editorLiveBadge').textContent = 'LIVE PREVIEW';
         }
         function rotateEditor(degrees) { appState.editorRotation = ((appState.editorRotation + degrees) % 360 + 360) % 360; updateEditorPreview(); }
         function resetEditor() {
@@ -882,6 +878,23 @@
             });
             document.getElementById(`tab-${tabName}`).classList.remove('hidden');
             document.getElementById(`tab-btn-${tabName}`).className = "py-2.5 px-2 rounded-2xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-all tab-btn-active";
+
+            // If Edit tab is selected, show the live preview container on the left viewport
+            const editorLeftPreview = document.getElementById('editorLeftPreviewWrapper');
+            const standardCanvas = document.getElementById('imageCanvas');
+            const toolbar = document.getElementById('toolbar');
+
+            if (tabName === 'editor') {
+                if(editorLeftPreview) editorLeftPreview.classList.remove('hidden');
+                if(standardCanvas) standardCanvas.classList.add('hidden');
+                if(toolbar) toolbar.classList.add('hidden');
+                updateEditorPreview();
+            } else {
+                if(editorLeftPreview) editorLeftPreview.classList.add('hidden');
+                if(standardCanvas) standardCanvas.classList.remove('hidden');
+                if(toolbar && appState.imgElement) toolbar.classList.remove('hidden');
+                redrawCanvas();
+            }
         }
 
         // Toast Notification System
