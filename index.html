@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LumiAudit Studio — Optical Telemetry & Photographic Forensic Suite</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        obsidian: '#0a0d14',
+                        cardbg: 'rgba(18, 24, 38, 0.75)',
+                        borderlight: 'rgba(255, 255, 255, 0.08)',
+                        brandcyan: '#00f0ff',
+                        brandemerald: '#10b981',
+                        brandamber: '#f59e0b',
+                        brandrose: '#f43f5e',
+                        brandviolet: '#8b5cf6'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- EXIF-JS Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
+    <!-- Chart.js for waveforms -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #07090e;
+            color: #f1f5f9;
+            overflow-x: hidden;
+        }
+
+        /* Ambient Glow Background */
+        .ambient-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+            background: 
+                radial-gradient(circle at 15% 20%, rgba(139, 92, 246, 0.12) 0%, transparent 45%),
+                radial-gradient(circle at 85% 15%, rgba(0, 240, 255, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 50% 80%, rgba(16, 185, 129, 0.08) 0%, transparent 50%);
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(10, 13, 20, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 240, 255, 0.4);
+        }
+
+        /* Glassmorphism Panels */
+        .glass-panel {
+            background: rgba(15, 21, 33, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 1.25rem;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-panel-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-panel-hover:hover {
+            border-color: rgba(0, 240, 255, 0.25);
+            box-shadow: 0 20px 40px -10px rgba(0, 240, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .glass-pill {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 9999px;
+        }
+
+        /* Animated Gauge Ring */
+        .gauge-circle {
+            transition: stroke-dashoffset 1s ease-in-out;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        /* Smooth tab button active glow */
+        .tab-btn-active {
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+            border-color: rgba(0, 240, 255, 0.4);
+            color: #ffffff;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col relative selection:bg-cyan-500/30 selection:text-cyan-200">
+
+    <!-- Ambient Gradient Backplate -->
+    <div class="ambient-glow"></div>
+
+    <!-- Top Header Navigation -->
+    <header class="h-16 border-b border-white/10 bg-obsidian/80 backdrop-blur-xl sticky top-0 z-50 px-4 lg:px-8 flex items-center justify-between">
+        <div class="flex items-center space-x-3.5">
+            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500/20 via-violet-500/20 to-emerald-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
+                <i data-lucide="aperture" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <div class="flex items-center space-x-2.5">
+                    <h1 class="font-extrabold text-base tracking-tight text-white flex items-center gap-1.5">
+                        <span>LumiAudit</span>
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 font-black">Studio</span>
+                    </h1>
+                    <span class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 tracking-wider">STOCK PREFLIGHT v5.0</span>
+                </div>
+                <p class="text-[11px] text-slate-400 font-medium">Technical QA • Stock Media Compliance Preflight • Human Review Required</p>
+            </div>
+        </div>
+
+        <!-- Sample Presets & Ingestion Control -->
+        <div class="flex items-center space-x-3">
+            <div class="hidden xl:flex items-center space-x-1.5 bg-white/[0.03] p-1.5 rounded-2xl border border-white/10 text-xs font-medium">
+                <span class="text-slate-400 px-2 text-[11px]">Sample Presets:</span>
+                <button onclick="loadPreset('landscape')" class="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/10 text-slate-200 transition-all hover:text-cyan-300">Landscape</button>
+                <button onclick="loadPreset('portrait')" class="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/10 text-slate-200 transition-all hover:text-cyan-300">Portrait</button>
+                <button onclick="loadPreset('challenging')" class="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/10 text-slate-200 transition-all hover:text-cyan-300">Clipping Audit</button>
+            </div>
+
+            <button onclick="document.getElementById('fileInput').click()" class="flex items-center space-x-2 bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-bold px-4 py-2 rounded-full text-xs transition-all shadow-[0_0_20px_rgba(0,240,255,0.25)] hover:scale-[1.02] active:scale-95">
+                <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                <span>Upload Image</span>
+            </button>
+            <input type="file" id="fileInput" accept="image/jpeg, image/png, image/webp" class="hidden">
+        </div>
+    </header>
+
+    <!-- Main Dashboard Grid -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden h-[calc(100vh-4rem)] relative z-10 p-3 lg:p-4 gap-4">
+        
+        <!-- Left Viewport Panel (7 Columns) -->
+        <section class="lg:col-span-7 flex flex-col glass-panel relative overflow-hidden rounded-3xl border border-white/10">
+            
+            <!-- Ingestion Dropzone / Empty State -->
+            <div id="dropzone" class="absolute inset-0 flex flex-col items-center justify-center p-8 z-30 bg-obsidian/95 backdrop-blur-2xl transition-all duration-300">
+                <div class="max-w-md w-full border-2 border-dashed border-white/15 hover:border-cyan-400/60 rounded-3xl p-10 text-center bg-white/[0.02] hover:bg-cyan-500/[0.02] transition-all duration-300 cursor-pointer group" onclick="document.getElementById('fileInput').click()">
+                    <div class="w-20 h-20 rounded-3xl bg-gradient-to-tr from-cyan-500/20 to-violet-500/20 border border-cyan-400/30 text-cyan-400 mx-auto flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_30px_rgba(0,240,255,0.15)]">
+                        <i data-lucide="image-plus" class="w-10 h-10"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-white mb-1.5 tracking-tight">Drop your photo here</h3>
+                    <p class="text-xs text-slate-400 mb-6 leading-relaxed">Supports JPEG, PNG, or WebP. Client-side processing ensures 100% privacy with zero server uploads.</p>
+                    <div class="inline-flex items-center space-x-2 text-xs bg-white/[0.06] px-4 py-2 rounded-full text-slate-300 border border-white/10 font-mono">
+                        <i data-lucide="clipboard-check" class="w-4 h-4 text-cyan-400"></i>
+                        <span>Paste from Clipboard (<kbd class="text-cyan-300 font-sans font-semibold">Cmd/Ctrl + V</kbd>)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Floating Tool Overlay Menu -->
+            <div id="toolbar" class="absolute top-4 left-4 z-20 flex flex-wrap items-center gap-2 bg-obsidian/85 backdrop-blur-xl p-2 rounded-2xl border border-white/10 shadow-2xl hidden">
+                <div class="flex items-center space-x-1 border-r border-white/10 pr-2">
+                    <button onclick="toggleOverlay('thirds')" id="btn-thirds" title="Rule of Thirds Grid" class="p-2 rounded-xl text-slate-400 hover:text-cyan-300 hover:bg-white/10 transition-all">
+                        <i data-lucide="grid-3x3" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="toggleOverlay('phi')" id="btn-phi" title="Golden Ratio (Phi Grid)" class="p-2 rounded-xl text-slate-400 hover:text-cyan-300 hover:bg-white/10 transition-all font-bold text-xs">φ</button>
+                    <button onclick="toggleOverlay('crosshair')" id="btn-crosshair" title="Center Crosshair" class="p-2 rounded-xl text-slate-400 hover:text-cyan-300 hover:bg-white/10 transition-all">
+                        <i data-lucide="crosshair" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="toggleOverlay('framing')" id="btn-framing" title="Framing Guides" class="p-2 rounded-xl text-slate-400 hover:text-cyan-300 hover:bg-white/10 transition-all">
+                        <i data-lucide="square" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <div class="flex items-center space-x-1 border-r border-white/10 pr-2">
+                    <button onclick="toggleClippingMask()" id="btn-clipping" title="Clipping Mask Overlay (Blown Highlights & Crushed Shadows)" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/15 text-xs font-semibold text-slate-200 transition-all">
+                        <i data-lucide="eye" class="w-3.5 h-3.5 text-rose-400"></i>
+                        <span>Exposure Mask</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center space-x-1">
+                    <button onclick="zoomCanvas(0.2)" title="Zoom In" class="p-2 rounded-xl text-slate-400 hover:text-cyan-300 hover:bg-white/10 transition-all">
+                        <i data-lucide="zoom-in" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="zoomCanvas(-0.2)" title="Zoom Out" class="p-2 rounded-xl text-slate-400 hover:text-cyan-300 hover:bg-white/10 transition-all">
+                        <i data-lucide="zoom-out" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="resetZoom()" title="Reset View" class="p-2 rounded-xl text-slate-400 hover:text-cyan-300 hover:bg-white/10 transition-all">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Viewport Container -->
+            <div id="canvasContainer" class="flex-1 relative overflow-hidden flex items-center justify-center bg-black/40 rounded-3xl cursor-grab active:cursor-grabbing">
+                <canvas id="imageCanvas" class="max-w-full max-h-full object-contain transition-transform duration-75"></canvas>
+            </div>
+
+            <!-- Bottom Telemetry Status Strip -->
+            <div id="imageInfoBar" class="h-11 bg-black/40 border-t border-white/10 px-5 flex items-center justify-between text-xs text-slate-400 hidden rounded-b-3xl">
+                <div class="flex items-center space-x-4">
+                    <span id="infoFilename" class="font-semibold text-slate-200 truncate max-w-[180px]">Photo.jpg</span>
+                    <span id="infoDimensions" class="text-slate-400 font-mono text-[11px]">0 × 0 px</span>
+                    <span id="pixelInspect" class="text-cyan-300 bg-cyan-500/10 px-2.5 py-0.5 rounded-full border border-cyan-500/20 font-mono text-[11px] hidden md:inline">RGB: [---, ---, ---]</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span id="infoZoom" class="text-slate-300 bg-white/5 px-2.5 py-0.5 rounded-full border border-white/10 font-mono text-[11px]">100%</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Sidebar Telemetry & Diagnostics (5 Columns) -->
+        <section class="lg:col-span-5 flex flex-col glass-panel rounded-3xl border border-white/10 overflow-hidden">
+            
+            <!-- Navigation Header Tabs -->
+            <div class="p-2 border-b border-white/10 bg-black/20 grid grid-cols-6 gap-1.5 shrink-0">
+                <button onclick="switchTab('telemetry')" id="tab-btn-telemetry" class="py-2.5 px-2 rounded-2xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-all tab-btn-active">
+                    <i data-lucide="activity" class="w-3.5 h-3.5"></i>
+                    <span>Telemetry</span>
+                </button>
+                <button onclick="switchTab('report')" id="tab-btn-report" class="py-2.5 px-2 rounded-2xl text-xs font-semibold flex items-center justify-center space-x-1.5 text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+                    <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                    <span>Report</span>
+                </button>
+                <button onclick="switchTab('exif')" id="tab-btn-exif" class="py-2.5 px-2 rounded-2xl text-xs font-semibold flex items-center justify-center space-x-1.5 text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+                    <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
+                    <span>Metadata</span>
+                </button>
+                <button onclick="switchTab('export')" id="tab-btn-export" class="py-2.5 px-2 rounded-2xl text-xs font-semibold flex items-center justify-center space-x-1.5 text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+                    <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+                    <span>Export</span>
+                </button>
+                <button onclick="switchTab('compliance')" id="tab-btn-compliance" class="py-2.5 px-2 rounded-2xl text-xs font-semibold flex items-center justify-center space-x-1.5 text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i><span>Stock QA</span>
+                </button>
+                <button onclick="switchTab('editor')" id="tab-btn-editor" class="py-2.5 px-2 rounded-2xl text-xs font-semibold flex items-center justify-center space-x-1.5 text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+                    <i data-lucide="wand-sparkles" class="w-3.5 h-3.5"></i><span>Edit</span>
+                </button>
+            </div>
+
+            <!-- Tab Content Container -->
+            <div class="flex-1 overflow-y-auto p-4 lg:p-5 space-y-4 text-xs">
+                
+                <!-- TAB 1: TECHNICAL TELEMETRY -->
+                <div id="tab-telemetry" class="space-y-4">
+                    
+                    <!-- Overall Technical Quality Score Card -->
+                    <div class="glass-panel p-5 relative overflow-hidden rounded-2xl border border-white/10 glass-panel-hover flex items-center justify-between">
+                        <div class="space-y-1.5 max-w-[65%]">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-[11px] font-bold text-slate-400 tracking-wider uppercase">Overall Technical Score</span>
+                            </div>
+                            <div class="flex items-baseline space-x-2">
+                                <span id="overallScore" class="text-4xl font-black text-white tracking-tight">--</span>
+                                <span class="text-slate-400 font-semibold text-sm">/ 10.0</span>
+                            </div>
+                            <span id="scoreBadge" class="inline-block px-3 py-1 rounded-full text-[10px] font-bold bg-white/5 text-slate-400 border border-white/10">Awaiting Ingestion</span>
+                            <p id="scoreSummary" class="text-[11px] text-slate-400 leading-relaxed pt-1">Technical screening only. Stock acceptance also requires a manual content, rights and metadata review.</p>
+                        </div>
+
+                        <!-- Radial Score Gauge SVG -->
+                        <div class="relative w-24 h-24 flex items-center justify-center shrink-0">
+                            <svg class="w-full h-full" viewBox="0 0 100 100">
+                                <circle class="text-slate-800" stroke-width="8" stroke="currentColor" fill="transparent" r="38" cx="50" cy="50" />
+                                <circle id="gaugeProgress" class="text-cyan-400 gauge-circle" stroke-width="8" stroke-dasharray="238.76" stroke-dashoffset="238.76" stroke-linecap="round" stroke="currentColor" fill="transparent" r="38" cx="50" cy="50" />
+                            </svg>
+                            <i data-lucide="award" class="w-6 h-6 text-cyan-400 absolute"></i>
+                        </div>
+                    </div>
+
+                    <!-- Histogram Waveform Canvas Card -->
+                    <div class="glass-panel p-4 space-y-3 rounded-2xl border border-white/10">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-xs font-bold text-white flex items-center space-x-2">
+                                <i data-lucide="bar-chart-3" class="w-4 h-4 text-cyan-400"></i>
+                                <span>RGB Luminance Waveform</span>
+                            </h4>
+                            <div class="flex items-center space-x-3 text-[10px] font-medium">
+                                <span class="flex items-center space-x-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span><span class="text-slate-400">Red</span></span>
+                                <span class="flex items-center space-x-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span><span class="text-slate-400">Green</span></span>
+                                <span class="flex items-center space-x-1"><span class="w-2 h-2 rounded-full bg-cyan-400"></span><span class="text-slate-400">Blue</span></span>
+                            </div>
+                        </div>
+                        <div class="bg-black/40 rounded-xl p-2.5 border border-white/5 relative h-36 flex items-center justify-center">
+                            <canvas id="histogramChartCanvas"></canvas>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                                <span class="text-slate-400 text-[10px] block mb-1">Blown Highlights (>245)</span>
+                                <span id="metricHighlight" class="font-extrabold text-white text-sm">--</span>
+                            </div>
+                            <div class="bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                                <span class="text-slate-400 text-[10px] block mb-1">Crushed Shadows (<10)</span>
+                                <span id="metricShadow" class="font-extrabold text-white text-sm">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Optical & Dynamic Range Metrics -->
+                    <div class="glass-panel p-4 space-y-3 rounded-2xl border border-white/10">
+                        <h4 class="text-xs font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="gauge" class="w-4 h-4 text-amber-400"></i>
+                            <span>Optical Telemetry Metrics</span>
+                        </h4>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                                <span class="text-slate-400 text-[10px] block mb-1">Sharpness Score</span>
+                                <span id="metricSharpness" class="font-extrabold text-white text-sm">--</span>
+                            </div>
+                            <div class="bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                                <span class="text-slate-400 text-[10px] block mb-1">Dynamic Range EV</span>
+                                <span id="metricDynamicRange" class="font-extrabold text-white text-sm">--</span>
+                            </div>
+                            <div class="bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                                <span class="text-slate-400 text-[10px] block mb-1">Average Saturation</span>
+                                <span id="metricSaturation" class="font-extrabold text-white text-sm">--</span>
+                            </div>
+                            <div class="bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                                <span class="text-slate-400 text-[10px] block mb-1">Color Temperature</span>
+                                <span id="metricKelvin" class="font-extrabold text-white text-sm">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dominant Color Palette -->
+                    <div class="glass-panel p-4 space-y-3 rounded-2xl border border-white/10">
+                        <h4 class="text-xs font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="palette" class="w-4 h-4 text-violet-400"></i>
+                            <span>Dominant Palette Extraction</span>
+                        </h4>
+                        <div id="paletteContainer" class="flex space-x-2 h-9 rounded-xl overflow-hidden p-1 bg-white/[0.03] border border-white/5">
+                            <div class="flex-1 bg-slate-800 rounded-lg animate-pulse"></div>
+                            <div class="flex-1 bg-slate-800 rounded-lg animate-pulse"></div>
+                            <div class="flex-1 bg-slate-800 rounded-lg animate-pulse"></div>
+                            <div class="flex-1 bg-slate-800 rounded-lg animate-pulse"></div>
+                            <div class="flex-1 bg-slate-800 rounded-lg animate-pulse"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- TAB 2: DIAGNOSTIC REPORT -->
+                <div id="tab-report" class="space-y-4 hidden">
+                    
+                    <!-- Executive Summary Card -->
+                    <div class="glass-panel p-5 space-y-3 rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/[0.05] to-transparent">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-white uppercase tracking-wider flex items-center space-x-2">
+                                <i data-lucide="sparkles" class="w-4 h-4 text-cyan-400"></i>
+                                <span>Executive Summary</span>
+                            </span>
+                            <span id="reportHeaderBadge" class="px-3 py-1 rounded-full text-[10px] font-bold bg-white/5 text-slate-400 border border-white/10">Standby</span>
+                        </div>
+                        <p id="reportSummaryText" class="text-xs text-slate-300 leading-relaxed">
+                            Upload or select an image to generate an executive diagnostic report detailing exposure balance, color balance, and optical clarity.
+                        </p>
+                    </div>
+
+                    <!-- Structured Scannable Finding Cards -->
+                    <div class="space-y-3">
+                        
+                        <!-- Finding 1: Exposure & Tone -->
+                        <div class="glass-panel p-4 space-y-2 rounded-2xl border border-white/10 glass-panel-hover">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-white flex items-center space-x-2">
+                                    <i data-lucide="sun" class="w-4 h-4 text-amber-400"></i>
+                                    <span>1. Exposure & Dynamic Range</span>
+                                </span>
+                                <span id="findingExpBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-slate-400 border border-white/10">Pending</span>
+                            </div>
+                            <p id="findingExpText" class="text-xs text-slate-400 leading-relaxed">Awaiting image ingestion...</p>
+                        </div>
+
+                        <!-- Finding 2: Color Fidelity -->
+                        <div class="glass-panel p-4 space-y-2 rounded-2xl border border-white/10 glass-panel-hover">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-white flex items-center space-x-2">
+                                    <i data-lucide="palette" class="w-4 h-4 text-rose-400"></i>
+                                    <span>2. Color Fidelity & White Balance</span>
+                                </span>
+                                <span id="findingColorBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-slate-400 border border-white/10">Pending</span>
+                            </div>
+                            <p id="findingColorText" class="text-xs text-slate-400 leading-relaxed">Awaiting image ingestion...</p>
+                        </div>
+
+                        <!-- Finding 3: Optical Sharpness -->
+                        <div class="glass-panel p-4 space-y-2 rounded-2xl border border-white/10 glass-panel-hover">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-white flex items-center space-x-2">
+                                    <i data-lucide="focus" class="w-4 h-4 text-cyan-400"></i>
+                                    <span>3. Optical Sharpness & Detail</span>
+                                </span>
+                                <span id="findingSharpnessBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-slate-400 border border-white/10">Pending</span>
+                            </div>
+                            <p id="findingSharpnessText" class="text-xs text-slate-400 leading-relaxed">Awaiting image ingestion...</p>
+                        </div>
+
+                    </div>
+
+                    <!-- Actionable Remediation Checklist -->
+                    <div class="glass-panel p-4 space-y-3 rounded-2xl border border-cyan-500/20">
+                        <h4 class="text-xs font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+                            <span>Actionable Remediation Plan</span>
+                        </h4>
+                        <div id="remediationList" class="space-y-2 text-xs text-slate-300">
+                            <div class="bg-white/[0.03] p-3 rounded-xl border border-white/5 flex items-start space-x-2.5">
+                                <i data-lucide="info" class="w-4 h-4 text-cyan-400 shrink-0 mt-0.5"></i>
+                                <span>Upload an image to generate step-by-step editing recommendations.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- TAB 3: EXIF & METADATA -->
+                <div id="tab-exif" class="space-y-4 hidden">
+                    
+                    <!-- Exposure Triangle Card -->
+                    <div class="glass-panel p-4 space-y-3 rounded-2xl border border-white/10">
+                        <h4 class="text-xs font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="camera" class="w-4 h-4 text-rose-400"></i>
+                            <span>Exposure Triangle</span>
+                        </h4>
+                        <div class="grid grid-cols-4 gap-2 text-center">
+                            <div class="bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                                <span class="text-[10px] text-slate-400 block mb-1">Aperture</span>
+                                <span id="exifAperture" class="text-xs font-extrabold text-white">--</span>
+                            </div>
+                            <div class="bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                                <span class="text-[10px] text-slate-400 block mb-1">Shutter</span>
+                                <span id="exifShutter" class="text-xs font-extrabold text-white">--</span>
+                            </div>
+                            <div class="bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                                <span class="text-[10px] text-slate-400 block mb-1">ISO Speed</span>
+                                <span id="exifISO" class="text-xs font-extrabold text-white">--</span>
+                            </div>
+                            <div class="bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                                <span class="text-[10px] text-slate-400 block mb-1">Focal Length</span>
+                                <span id="exifFocal" class="text-xs font-extrabold text-white">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Technical Alerts Container -->
+                    <div class="glass-panel p-4 space-y-3 rounded-2xl border border-white/10">
+                        <h4 class="text-xs font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i>
+                            <span>Contextual Risk Alerts</span>
+                        </h4>
+                        <div id="warningsContainer" class="space-y-2">
+                            <div class="bg-white/[0.03] p-3 rounded-xl border border-white/5 text-xs text-slate-400 flex items-center space-x-2.5">
+                                <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                                <span>No capture warnings flagged. Standby for image input.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Clean Metadata Table -->
+                    <div class="glass-panel p-4 space-y-3 rounded-2xl border border-white/10">
+                        <h4 class="text-xs font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-cyan-400"></i>
+                            <span>Complete Metadata Registry</span>
+                        </h4>
+                        <div class="space-y-2 text-xs">
+                            <div class="flex justify-between py-1.5 border-b border-white/5">
+                                <span class="text-slate-400">Camera Manufacturer</span>
+                                <span id="exifMake" class="text-white font-semibold">--</span>
+                            </div>
+                            <div class="flex justify-between py-1.5 border-b border-white/5">
+                                <span class="text-slate-400">Camera Model</span>
+                                <span id="exifModel" class="text-white font-semibold">--</span>
+                            </div>
+                            <div class="flex justify-between py-1.5 border-b border-white/5">
+                                <span class="text-slate-400">Lens Model</span>
+                                <span id="exifLens" class="text-white font-semibold">--</span>
+                            </div>
+                            <div class="flex justify-between py-1.5 border-b border-white/5">
+                                <span class="text-slate-400">Date & Time Taken</span>
+                                <span id="exifDate" class="text-white font-semibold">--</span>
+                            </div>
+                            <div class="flex justify-between py-1.5">
+                                <span class="text-slate-400">Color Profile</span>
+                                <span id="exifColorSpace" class="text-white font-semibold">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- TAB 5: STOCK MEDIA COMPLIANCE -->
+                <div id="tab-compliance" class="space-y-4 hidden">
+                    <div class="glass-panel p-4 space-y-2 rounded-2xl border border-amber-500/30">
+                        <div class="flex items-center justify-between"><h4 class="text-sm font-extrabold text-white">Stock submission preflight</h4><span id="stockGateBadge" class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30">REVIEW REQUIRED</span></div>
+                        <p class="text-xs text-slate-300 leading-relaxed">This is a conservative screening checklist, not an agency approval guarantee. Requirements vary by agency, collection, country and submission type. Automated pixel checks cannot establish copyright, releases, authenticity or commercial suitability.</p>
+                        <div class="grid grid-cols-2 gap-2 pt-1"><div class="bg-white/[0.03] p-3 rounded-xl border border-white/5"><span class="text-slate-400 block text-[10px]">Technical preflight</span><strong id="stockTechStatus" class="text-amber-300">Awaiting image</strong></div><div class="bg-white/[0.03] p-3 rounded-xl border border-white/5"><span class="text-slate-400 block text-[10px]">Manual gates</span><strong id="stockManualStatus" class="text-amber-300">0 / 10 complete</strong></div></div>
+                    </div>
+                    <div class="glass-panel p-4 space-y-3 rounded-2xl border border-white/10"><h4 class="text-xs font-bold text-white">Technical screening gates</h4><div id="stockTechnicalFindings" class="space-y-2 text-xs text-slate-300"><p>Upload an image to run technical checks.</p></div></div>
+                    <div class="glass-panel p-4 space-y-3 rounded-2xl border border-white/10"><h4 class="text-xs font-bold text-white">Required human review — check only after verifying</h4><p class="text-[11px] text-slate-400">Unchecked items block a “ready for submission” status. Checkboxes record your review; they do not independently prove compliance.</p><div id="stockChecklist" class="space-y-2 text-xs text-slate-300"></div><div class="space-y-1"><label for="stockAgency" class="text-[11px] text-slate-400">Target agency / collection</label><input id="stockAgency" class="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-xs text-white" placeholder="e.g. Adobe Stock — commercial" /></div><div class="space-y-1"><label for="stockNotes" class="text-[11px] text-slate-400">Reviewer notes / unresolved issues</label><textarea id="stockNotes" rows="3" class="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-xs text-white" placeholder="Describe rights, releases, retouching, artifacts, or policy checks still needed"></textarea></div><button onclick="refreshStockCompliance()" class="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold">Re-evaluate submission gates</button></div>
+                    <div class="glass-panel p-4 space-y-2 rounded-2xl border border-white/10"><h4 class="text-xs font-bold text-white">Conservative submission policy</h4><ul class="list-disc pl-4 space-y-1 text-xs text-slate-400"><li>Reject/repair visible dust, sensor spots, banding, halos, compression, chromatic aberration and distracting noise at 100% view.</li><li>Do not assume high ISO means failure; inspect actual image noise and detail.</li><li>Do not infer color temperature, dynamic range in EV, authenticity, subject sharpness or legal rights from RGB pixels alone.</li><li>Commercial submissions generally need appropriate model/property releases for recognizable people or protected/private property; editorial rules differ.</li><li>Verify trademarks, logos, copyrighted artwork, privacy, location restrictions, AI-generation/editing disclosures and agency-specific policies.</li><li>Metadata must be accurate, relevant, non-spammy and free of unsupported claims; add title, description and keywords in the agency portal.</li></ul></div>
+                </div>
+
+                <!-- PHOTO EDITOR -->
+                <div id="tab-editor" class="space-y-4 hidden">
+                    <div class="glass-panel p-4 space-y-2 rounded-2xl border border-cyan-500/20">
+                        <h4 class="text-sm font-extrabold text-white flex items-center gap-2"><i data-lucide="wand-sparkles" class="w-4 h-4 text-cyan-300"></i>Basic photo editor</h4>
+                        <p class="text-[11px] text-slate-400 leading-relaxed">The large edited preview stays at the top and updates live as you adjust settings. Your original is untouched; download a separate edited copy when ready.</p>
+                        <div id="editorEmptyState" class="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">Upload a photo first to enable editing.</div>
+                    </div>
+                    
+                    <!-- Sticky Live Edited Preview Container -->
+                    <div class="glass-panel p-3 space-y-3 rounded-2xl border border-cyan-500/30 sticky top-0 z-30 bg-slate-950/90 shadow-2xl backdrop-blur-2xl">
+                        <div class="flex items-center justify-between gap-2">
+                            <div><p class="text-[10px] text-cyan-300 font-bold tracking-wider">LIVE EDITED PREVIEW</p><p class="text-[10px] text-slate-400">Follows you as you scroll through tools.</p></div>
+                            <span id="editorLiveBadge" class="text-[10px] rounded-full px-2 py-1 bg-cyan-500/10 border border-cyan-500/20 text-cyan-200">LIVE</span>
+                        </div>
+                        <div class="w-full rounded-xl bg-black/50 flex items-center justify-center overflow-hidden min-h-[180px]">
+                            <canvas id="editorAfterCanvas" class="w-full rounded-lg" style="max-height: min(45vh, 400px); object-fit:contain"></canvas>
+                            <div id="editorPreviewPlaceholder" class="hidden text-xs text-slate-500 p-8 text-center">Upload a photo to see the live edited preview.</div>
+                        </div>
+                        <details class="border border-white/10 rounded-xl p-2">
+                            <summary class="text-[10px] text-slate-300 cursor-pointer">Compare with original</summary>
+                            <div class="pt-2"><p class="text-[10px] text-slate-400 mb-1">ORIGINAL</p><canvas id="editorBeforeCanvas" class="w-full rounded-lg bg-black/30" style="max-height:200px;object-fit:contain"></canvas></div>
+                        </details>
+                        <p id="editorPreviewNote" class="text-[10px] text-slate-500">The preview updates as you move sliders. Export keeps the full available image resolution.</p>
+                    </div>
+
+                    <div class="glass-panel p-4 space-y-4 rounded-2xl border border-white/10">
+                        <h4 class="text-xs font-bold text-white">Light and colour</h4>
+                        <div class="space-y-1"><div class="flex justify-between"><label for="editBrightness" class="text-slate-300">Brightness</label><span id="editBrightnessVal" class="text-cyan-300 font-mono">0</span></div><input id="editBrightness" type="range" min="-50" max="50" value="0" class="w-full accent-cyan-400" oninput="updateEditorPreview()"></div>
+                        <div class="space-y-1"><div class="flex justify-between"><label for="editContrast" class="text-slate-300">Contrast</label><span id="editContrastVal" class="text-cyan-300 font-mono">0</span></div><input id="editContrast" type="range" min="-40" max="40" value="0" class="w-full accent-cyan-400" oninput="updateEditorPreview()"></div>
+                        <div class="space-y-1"><div class="flex justify-between"><label for="editSaturation" class="text-slate-300">Saturation</label><span id="editSaturationVal" class="text-cyan-300 font-mono">0</span></div><input id="editSaturation" type="range" min="-60" max="60" value="0" class="w-full accent-cyan-400" oninput="updateEditorPreview()"></div>
+                        <div class="space-y-1"><div class="flex justify-between"><label for="editWarmth" class="text-slate-300">Warmth</label><span id="editWarmthVal" class="text-cyan-300 font-mono">0</span></div><input id="editWarmth" type="range" min="-40" max="40" value="0" class="w-full accent-cyan-400" oninput="updateEditorPreview()"></div>
+                        <div class="space-y-1"><div class="flex justify-between"><label for="editShadows" class="text-slate-300">Shadows</label><span id="editShadowsVal" class="text-cyan-300 font-mono">0</span></div><input id="editShadows" type="range" min="-60" max="60" value="0" class="w-full accent-cyan-400" oninput="updateEditorPreview()"><p class="text-[10px] text-slate-500">Lift or deepen darker areas.</p></div>
+                        <div class="space-y-1"><div class="flex justify-between"><label for="editHighlights" class="text-slate-300">Highlights</label><span id="editHighlightsVal" class="text-cyan-300 font-mono">0</span></div><input id="editHighlights" type="range" min="-60" max="60" value="0" class="w-full accent-cyan-400" oninput="updateEditorPreview()"><p class="text-[10px] text-slate-500">Reduce bright areas or brighten them slightly.</p></div>
+                    </div>
+                    <div class="glass-panel p-4 space-y-4 rounded-2xl border border-cyan-500/20">
+                        <h4 class="text-xs font-bold text-white">Detail and atmosphere</h4>
+                        <div class="space-y-1"><div class="flex justify-between"><label for="editHaze" class="text-slate-300">Haze removal</label><span id="editHazeVal" class="text-cyan-300 font-mono">0</span></div><input id="editHaze" type="range" min="0" max="100" value="0" class="w-full accent-cyan-400" oninput="updateEditorPreview()"><p class="text-[10px] text-slate-500">Adds local contrast and colour to reduce the appearance of atmospheric haze. Strong settings can create halos or unnatural colours.</p></div>
+                        <div class="space-y-1"><div class="flex justify-between"><label for="editSharpness" class="text-slate-300">Sharpness</label><span id="editSharpnessVal" class="text-cyan-300 font-mono">0</span></div><input id="editSharpness" type="range" min="0" max="100" value="0" class="w-full accent-cyan-400" oninput="updateEditorPreview()"><p class="text-[10px] text-slate-500">Use gently. Sharpening cannot restore detail lost to focus blur or motion blur.</p></div>
+                    </div>
+                    <div class="glass-panel p-4 space-y-3 rounded-2xl border border-white/10">
+                        <h4 class="text-xs font-bold text-white">Crop and straighten</h4>
+                        <div class="space-y-1"><div class="flex justify-between"><label for="editCrop" class="text-slate-300">Crop evenly from each edge</label><span id="editCropVal" class="text-cyan-300 font-mono">0%</span></div><input id="editCrop" type="range" min="0" max="20" value="0" class="w-full accent-cyan-400" oninput="updateEditorPreview()"><p class="text-[10px] text-slate-500">This simple crop removes the same percentage from all four edges.</p></div>
+                        <div class="space-y-1"><div class="flex justify-between"><label for="editStraighten" class="text-slate-300">Straighten</label><span id="editStraightenVal" class="text-cyan-300 font-mono">0°</span></div><input id="editStraighten" type="range" min="-10" max="10" step="0.5" value="0" class="w-full accent-cyan-400" oninput="updateEditorPreview()"></div>
+                        <div class="grid grid-cols-2 gap-2"><button onclick="rotateEditor( -90)" class="py-2 rounded-xl bg-white/[0.06] border border-white/10 hover:bg-white/10 text-xs font-semibold">Rotate left 90°</button><button onclick="rotateEditor(90)" class="py-2 rounded-xl bg-white/[0.06] border border-white/10 hover:bg-white/10 text-xs font-semibold">Rotate right 90°</button></div>
+                    </div>
+                    <div class="glass-panel p-4 space-y-3 rounded-2xl border border-white/10">
+                        <h4 class="text-xs font-bold text-white">Save edited copy</h4>
+                        <div class="space-y-1"><label for="editorFormat" class="text-slate-300">File format</label><select id="editorFormat" class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white"><option value="image/jpeg">JPEG (recommended for photos)</option><option value="image/png">PNG (lossless)</option><option value="image/webp">WebP</option></select></div>
+                        <div class="space-y-1" id="editorQualityWrap"><div class="flex justify-between"><label for="editorQuality" class="text-slate-300">JPEG / WebP quality</label><span id="editorQualityVal" class="text-cyan-300 font-mono">95%</span></div><input id="editorQuality" type="range" min="80" max="100" value="95" class="w-full accent-cyan-400" oninput="document.getElementById('editorQualityVal').textContent=this.value+'%'"></div>
+                        <button onclick="resetEditor()" class="w-full py-2.5 rounded-xl bg-white/[0.06] border border-white/10 hover:bg-white/10 text-slate-200 font-bold">Reset all edits</button>
+                        <button onclick="downloadEditedImage()" class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-extrabold">Download edited copy</button>
+                        <p class="text-[10px] text-slate-500 leading-relaxed">Editing cannot reliably restore detail that was never captured, remove every defect, or guarantee stock acceptance. Re-run the stock checks on the exported copy.</p>
+                    </div>
+                </div>
+
+                <!-- TAB 4: EXPORT -->
+                <div id="tab-export" class="space-y-4 hidden">
+                    
+                    <div class="glass-panel p-4 space-y-3 rounded-2xl border border-white/10">
+                        <h4 class="text-xs font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="copy" class="w-4 h-4 text-cyan-400"></i>
+                            <span>Diagnostic Summary Report</span>
+                        </h4>
+                        <textarea id="summaryTextarea" readonly class="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-slate-300 font-mono focus:outline-none resize-none"></textarea>
+                        <button onclick="copyDiagnosticSummary()" class="w-full py-2.5 px-4 rounded-xl bg-white/[0.08] hover:bg-white/15 text-slate-100 font-bold text-xs flex items-center justify-center space-x-2 transition-all border border-white/10">
+                            <i data-lucide="clipboard" class="w-4 h-4 text-cyan-400"></i>
+                            <span>Copy Report to Clipboard</span>
+                        </button>
+                    </div>
+
+                    <div class="glass-panel p-4 space-y-3 rounded-2xl border border-white/10">
+                        <h4 class="text-xs font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
+                            <span>Audit & Snapshot Exports</span>
+                        </h4>
+                        <div class="space-y-2.5">
+                            <button onclick="exportJSONAudit()" class="w-full py-3 px-4 rounded-full bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-[0_0_20px_rgba(0,240,255,0.2)]">
+                                <i data-lucide="file-json" class="w-4 h-4"></i>
+                                <span>Export Full JSON Audit</span>
+                            </button>
+                            <button onclick="downloadAnnotatedSnapshot()" class="w-full py-3 px-4 rounded-full bg-white/[0.08] hover:bg-white/15 text-slate-100 font-bold text-xs flex items-center justify-center space-x-2 transition-all border border-white/10">
+                                <i data-lucide="camera" class="w-4 h-4 text-emerald-400"></i>
+                                <span>Download Annotated PNG Snapshot</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none text-xs"></div>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+        document.getElementById('editorFormat').addEventListener('change', () => { document.getElementById('editorQualityWrap').classList.toggle('hidden', document.getElementById('editorFormat').value === 'image/png'); });
+
+        // Application State
+        let appState = {
+            imageName: '',
+            imageWidth: 0,
+            imageHeight: 0,
+            imgElement: null,
+            editorSourceImage: null,
+            editorRotation: 0,
+            originalImageFile: null,
+            exifData: {},
+            telemetry: {
+                overallScore: 0,
+                highlightClippingPct: 0,
+                shadowCrushingPct: 0,
+                sharpness: 0,
+                dynamicRange: '0 EV',
+                saturation: '0%',
+                kelvin: 'Not reliably inferable',
+                palette: ['#1e293b', '#334155', '#475569', '#64748b', '#94a3b8'],
+                histograms: { r: new Array(256).fill(0), g: new Array(256).fill(0), b: new Array(256).fill(0) }
+            },
+            overlays: { thirds: false, phi: false, crosshair: false, framing: false },
+            clippingMaskActive: false,
+            zoom: 1,
+            panX: 0,
+            panY: 0,
+            isDragging: false,
+            startX: 0,
+            startY: 0
+        };
+
+        // Canvas & Histogram Setup
+        const canvas = document.getElementById('imageCanvas');
+        const ctx = canvas.getContext('2d');
+        let histogramChart = null;
+
+        function initHistogramChart() {
+            const ctxHist = document.getElementById('histogramChartCanvas').getContext('2d');
+            histogramChart = new Chart(ctxHist, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 256}, (_, i) => i),
+                    datasets: [
+                        { label: 'Red', data: new Array(256).fill(0), borderColor: '#f43f5e', backgroundColor: 'rgba(244, 63, 94, 0.15)', borderWidth: 1.5, pointRadius: 0, fill: true },
+                        { label: 'Green', data: new Array(256).fill(0), borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.15)', borderWidth: 1.5, pointRadius: 0, fill: true },
+                        { label: 'Blue', data: new Array(256).fill(0), borderColor: '#00f0ff', backgroundColor: 'rgba(0, 240, 255, 0.15)', borderWidth: 1.5, pointRadius: 0, fill: true }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 400 },
+                    scales: {
+                        x: { display: false },
+                        y: { display: false, beginAtZero: true }
+                    },
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                }
+            });
+        }
+        initHistogramChart();
+
+        // Drag & Drop / Clipboard Ingestion
+        const dropzone = document.getElementById('dropzone');
+        window.addEventListener('dragover', (e) => { e.preventDefault(); });
+        window.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                handleImageFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                handleImageFile(e.target.files[0]);
+            }
+        });
+
+        window.addEventListener('paste', (e) => {
+            const items = e.clipboardData.items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const file = items[i].getAsFile();
+                    if (file) handleImageFile(file);
+                    break;
+                }
+            }
+        });
+
+        // Basic in-browser photo editor. The source image remains untouched; edits are rendered on export.
+        function editorSettings() {
+            return {
+                brightness: Number(document.getElementById('editBrightness').value),
+                contrast: Number(document.getElementById('editContrast').value),
+                saturation: Number(document.getElementById('editSaturation').value),
+                warmth: Number(document.getElementById('editWarmth').value),
+                shadows: Number(document.getElementById('editShadows').value),
+                highlights: Number(document.getElementById('editHighlights').value),
+                haze: Number(document.getElementById('editHaze').value),
+                sharpness: Number(document.getElementById('editSharpness').value),
+                crop: Number(document.getElementById('editCrop').value) / 100,
+                straighten: Number(document.getElementById('editStraighten').value),
+                rotation: appState.editorRotation || 0
+            };
+        }
+
+        // Pixel operations are deliberately conservative and run on the preview and exported image.
+        function applyEditorPixelAdjustments(target, settings, preview=false) {
+            if (!settings.warmth && !settings.shadows && !settings.highlights && !settings.haze && !settings.sharpness) return;
+            const ctx = target.getContext('2d', { willReadFrequently: true });
+            const w = target.width, h = target.height;
+            if (!w || !h) return;
+            const image = ctx.getImageData(0, 0, w, h);
+            const px = image.data;
+            const original = new Uint8ClampedArray(px);
+            const warmth = settings.warmth * 0.8;
+            const shadows = settings.shadows / 100;
+            const highlights = settings.highlights / 100;
+            const haze = settings.haze / 100;
+            const sharp = settings.sharpness / 100;
+            for (let i=0; i<px.length; i+=4) {
+                let r = original[i], g = original[i+1], b = original[i+2];
+                const lum = 0.2126*r + 0.7152*g + 0.0722*b;
+                const shadowWeight = Math.pow(Math.max(0, 1 - lum/255), 2);
+                const highlightWeight = Math.pow(Math.max(0, lum/255), 2);
+                const toneAdjust = shadows * 65 * shadowWeight + highlights * 65 * highlightWeight;
+                r += toneAdjust + warmth; g += toneAdjust; b += toneAdjust - warmth;
+                // A restrained dehaze approximation: deepen the veil and increase local colour contrast.
+                if (haze > 0) {
+                    const strength = haze * 0.42;
+                    r = (r - 128) * (1 + strength) + 128 - haze * 5;
+                    g = (g - 128) * (1 + strength) + 128 - haze * 5;
+                    b = (b - 128) * (1 + strength) + 128 - haze * 5;
+                    const gray = 0.2126*r + 0.7152*g + 0.0722*b;
+                    const sat = 1 + haze * 0.18;
+                    r = gray + (r-gray)*sat; g = gray + (g-gray)*sat; b = gray + (b-gray)*sat;
+                }
+                px[i] = Math.max(0, Math.min(255, r));
+                px[i+1] = Math.max(0, Math.min(255, g));
+                px[i+2] = Math.max(0, Math.min(255, b));
+            }
+            // Simple 3x3 unsharp mask. Preview uses the same operation at preview resolution.
+            if (sharp > 0 && w > 2 && h > 2) {
+                const amount = sharp * (preview ? 0.9 : 1.05);
+                const clamp = v => Math.max(0, Math.min(255, v));
+                for (let y=1; y<h-1; y++) {
+                    for (let x=1; x<w-1; x++) {
+                        const i = (y*w+x)*4;
+                        for (let ch=0; ch<3; ch++) {
+                            const avg = (original[i-4+ch] + original[i+4+ch] +
+                                original[i-w*4+ch] + original[i+w*4+ch]) / 4;
+                            const base = px[i+ch];
+                            px[i+ch] = clamp(base + (base-avg)*amount);
+                        }
+                    }
+                }
+            }
+            ctx.putImageData(image, 0, 0);
+        }
+
+        function renderEditedCanvas(source, preview=false) {
+            const settings = editorSettings();
+            const cropX = Math.round(source.width * settings.crop);
+            const cropY = Math.round(source.height * settings.crop);
+            const cropW = Math.max(1, source.width - cropX * 2);
+            const cropH = Math.max(1, source.height - cropY * 2);
+            const radians = (settings.rotation + settings.straighten) * Math.PI / 180;
+            const outW = Math.max(1, Math.ceil(Math.abs(cropW * Math.cos(radians)) + Math.abs(cropH * Math.sin(radians))));
+            const outH = Math.max(1, Math.ceil(Math.abs(cropH * Math.cos(radians)) + Math.abs(cropW * Math.sin(radians))));
+            const target = document.createElement('canvas');
+            let w = outW, h = outH, previewScale = 1;
+            if (preview) {
+                const maxSide = 1000;
+                previewScale = Math.min(1, maxSide / Math.max(outW, outH));
+                w = Math.max(1, Math.round(outW * previewScale)); h = Math.max(1, Math.round(outH * previewScale));
+            }
+            target.width = w; target.height = h;
+            const c = target.getContext('2d', { willReadFrequently: true });
+            c.save(); c.translate(w/2, h/2); c.rotate(radians); c.scale(previewScale, previewScale);
+            c.filter = `brightness(${100 + settings.brightness}%) contrast(${100 + settings.contrast}%) saturate(${100 + settings.saturation}%)`;
+            c.drawImage(source, cropX, cropY, cropW, cropH, -cropW/2, -cropH/2, cropW, cropH);
+            c.restore();
+            applyEditorPixelAdjustments(target, settings, preview);
+            return target;
+        }
+
+        function updateEditorPreview() {
+            const labels = {
+                Brightness: '', Contrast: '', Saturation: '', Warmth: '',
+                Shadows: '', Highlights: '', Haze: '', Sharpness: '',
+                Crop: '%', Straighten: '°'
+            };
+            Object.keys(labels).forEach(name => {
+                const input = document.getElementById('edit'+name);
+                const label = document.getElementById('edit'+name+'Val');
+                if (input && label) label.textContent = input.value + labels[name];
+            });
+            const empty = document.getElementById('editorEmptyState');
+            const placeholder = document.getElementById('editorPreviewPlaceholder');
+            const source = appState.editorSourceImage;
+            if (!source) {
+                empty.classList.remove('hidden');
+                placeholder.classList.remove('hidden');
+                document.getElementById('editorAfterCanvas').classList.add('hidden');
+                document.getElementById('editorBeforeCanvas').classList.add('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+            placeholder.classList.add('hidden');
+            const before = document.getElementById('editorBeforeCanvas');
+            const after = document.getElementById('editorAfterCanvas');
+            before.classList.remove('hidden'); after.classList.remove('hidden');
+            const scale = Math.min(1, 900 / Math.max(source.width, source.height));
+            before.width = Math.max(1, Math.round(source.width*scale)); before.height = Math.max(1, Math.round(source.height*scale));
+            const bctx = before.getContext('2d'); bctx.clearRect(0,0,before.width,before.height); bctx.drawImage(source,0,0,before.width,before.height);
+            const result = renderEditedCanvas(source, true);
+            after.width = result.width; after.height = result.height;
+            const actx = after.getContext('2d'); actx.clearRect(0,0,after.width,after.height); actx.drawImage(result,0,0);
+            document.getElementById('editorLiveBadge').textContent = 'LIVE PREVIEW';
+        }
+        function rotateEditor(degrees) { appState.editorRotation = ((appState.editorRotation + degrees) % 360 + 360) % 360; updateEditorPreview(); }
+        function resetEditor() {
+            ['editBrightness','editContrast','editSaturation','editWarmth','editShadows','editHighlights','editHaze','editSharpness','editCrop','editStraighten'].forEach(id => document.getElementById(id).value = 0);
+            appState.editorRotation = 0; updateEditorPreview(); showToast('Editor adjustments reset');
+        }
+        function downloadEditedImage() {
+            if (!appState.editorSourceImage) { showToast('Upload a photo before editing', 'error'); return; }
+            try {
+                const result = renderEditedCanvas(appState.editorSourceImage, false);
+                const type = document.getElementById('editorFormat').value;
+                const quality = Number(document.getElementById('editorQuality').value) / 100;
+                result.toBlob(blob => {
+                    if (!blob) { showToast('Could not export this image', 'error'); return; }
+                    const url = URL.createObjectURL(blob); const a = document.createElement('a');
+                    const stem = (appState.imageName || 'photo').replace(/\.[^.]+$/, '');
+                    const ext = type === 'image/png' ? 'png' : type === 'image/webp' ? 'webp' : 'jpg';
+                    a.href = url; a.download = `${stem}_edited.${ext}`; document.body.appendChild(a); a.click(); a.remove();
+                    setTimeout(() => URL.revokeObjectURL(url), 1500);
+                    showToast('Edited copy downloaded — original unchanged');
+                }, type, quality);
+            } catch (err) { console.error(err); showToast('Editing failed. Try a smaller image.', 'error'); }
+        }
+
+        // Tab Switching Logic
+        function switchTab(tabName) {
+            ['telemetry', 'report', 'exif', 'export', 'compliance', 'editor'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`tab-btn-${t}`).className = "py-2.5 px-2 rounded-2xl text-xs font-semibold flex items-center justify-center space-x-1.5 text-slate-400 hover:text-white hover:bg-white/5 transition-all";
+            });
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-btn-${tabName}`).className = "py-2.5 px-2 rounded-2xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-all tab-btn-active";
+        }
+
+        // Toast Notification System
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto px-4 py-3 rounded-2xl shadow-2xl text-xs font-bold flex items-center space-x-2.5 transition-all duration-300 transform translate-y-2 opacity-0 border backdrop-blur-xl ${
+                type === 'success' ? 'bg-obsidian/90 border-emerald-500/40 text-emerald-300' : 'bg-obsidian/90 border-rose-500/40 text-rose-300'
+            }`;
+            toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" class="w-4 h-4"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+            setTimeout(() => { toast.classList.remove('translate-y-2', 'opacity-0'); }, 10);
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function handleImageFile(file) {
+            appState.originalImageFile = file;
+            appState.imageName = file.name;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    appState.editorSourceImage = img;
+                    appState.editorRotation = 0;
+                    let w = img.width;
+                    let h = img.height;
+                    const maxDim = 1920;
+                    if (w > maxDim || h > maxDim) {
+                        if (w > h) {
+                            h = Math.round((h * maxDim) / w);
+                            w = maxDim;
+                        } else {
+                            w = Math.round((w * maxDim) / h);
+                            h = maxDim;
+                        }
+                    }
+
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = w;
+                    tempCanvas.height = h;
+                    const tCtx = tempCanvas.getContext('2d');
+                    tCtx.drawImage(img, 0, 0, w, h);
+
+                    const optimizedImg = new Image();
+                    optimizedImg.onload = function() {
+                        appState.imgElement = optimizedImg;
+                        appState.imageWidth = img.width;
+                        appState.imageHeight = img.height;
+                        
+                        dropzone.classList.add('hidden');
+                        document.getElementById('toolbar').classList.remove('hidden');
+                        document.getElementById('imageInfoBar').classList.remove('hidden');
+                        
+                        document.getElementById('infoFilename').innerText = appState.imageName;
+                        document.getElementById('infoDimensions').innerText = `${img.width} × ${img.height} px`;
+
+                        resetZoom();
+                        runDeepTelemetryAndAnalysis(optimizedImg, file);
+                        parseEXIFData(file, optimizedImg);
+                        updateEditorPreview();
+                        showToast('Image ingested successfully');
+                    };
+                    optimizedImg.src = tempCanvas.toDataURL('image/jpeg', 0.92);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Sample Preset Loader
+        function loadPreset(type) {
+            const canvasP = document.createElement('canvas');
+            canvasP.width = 1920;
+            canvasP.height = 1280;
+            const pCtx = canvasP.getContext('2d');
+
+            if (type === 'landscape') {
+                const grad = pCtx.createLinearGradient(0, 0, 0, canvasP.height);
+                grad.addColorStop(0, '#f59e0b');
+                grad.addColorStop(0.4, '#8b5cf6');
+                grad.addColorStop(0.8, '#0f172a');
+                pCtx.fillStyle = grad;
+                pCtx.fillRect(0, 0, canvasP.width, canvasP.height);
+                pCtx.fillStyle = '#00f0ff';
+                pCtx.beginPath();
+                pCtx.arc(960, 480, 110, 0, Math.PI * 2);
+                pCtx.fill();
+            } else if (type === 'portrait') {
+                const grad = pCtx.createRadialGradient(960, 640, 100, 960, 640, 900);
+                grad.addColorStop(0, '#f43f5e');
+                grad.addColorStop(0.6, '#4c1d95');
+                grad.addColorStop(1, '#0f172a');
+                pCtx.fillStyle = grad;
+                pCtx.fillRect(0, 0, canvasP.width, canvasP.height);
+            } else {
+                pCtx.fillStyle = '#07090e';
+                pCtx.fillRect(0, 0, canvasP.width, canvasP.height);
+                pCtx.fillStyle = '#ffffff';
+                pCtx.fillRect(200, 200, 500, 500); // Highlight Clipping
+                pCtx.fillStyle = '#000000';
+                pCtx.fillRect(1200, 600, 500, 500); // Shadow Crushing
+            }
+
+            canvasP.toBlob((blob) => {
+                const file = new File([blob], `${type}_sample.jpg`, { type: 'image/jpeg' });
+                // Preset images are synthetic demos; do not attach fabricated camera/EXIF metadata.
+                appState.exifData = {};
+                handleImageFile(file);
+            }, 'image/jpeg', 0.95);
+        }
+
+        // Telemetry Calculations
+        function runDeepTelemetryAndAnalysis(img, file) {
+            const w = img.width;
+            const h = img.height;
+            const analysisCanvas = document.createElement('canvas');
+            analysisCanvas.width = w;
+            analysisCanvas.height = h;
+            const aCtx = analysisCanvas.getContext('2d');
+            aCtx.drawImage(img, 0, 0);
+
+            const imgData = aCtx.getImageData(0, 0, w, h);
+            const data = imgData.data;
+            const totalPixels = w * h;
+
+            let rBins = new Array(256).fill(0);
+            let gBins = new Array(256).fill(0);
+            let bBins = new Array(256).fill(0);
+
+            let highlightCount = 0;
+            let shadowCount = 0;
+            let totalLum = 0;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i], g = data[i+1], b = data[i+2];
+                rBins[r]++; gBins[g]++; bBins[b]++;
+                const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                totalLum += lum;
+
+                if (r > 245 && g > 245 && b > 245) highlightCount++;
+                if (r < 10 && g < 10 && b < 10) shadowCount++;
+            }
+
+            const highlightPct = ((highlightCount / totalPixels) * 100).toFixed(1);
+            const shadowPct = ((shadowCount / totalPixels) * 100).toFixed(1);
+            const meanLumVal = totalLum / totalPixels;
+
+            const sharpnessVal = estimateSharpness(aCtx, w, h);
+            const tonalSpread = estimateTonalSpread(data, totalPixels);
+            const avgSat = estimateAverageSaturation(data, totalPixels).toFixed(1) + '%';
+            const kelvinEst = 'Not reliably inferable from rendered pixels';
+
+            let score = 10.0;
+            if (highlightPct > 2.0) score -= 1.2;
+            if (highlightPct > 10.0) score -= 2.0;
+            if (shadowPct > 5.0) score -= 1.0;
+            if (shadowPct > 15.0) score -= 1.5;
+            if (sharpnessVal < 70) score -= 1.5;
+            score = Math.max(1.0, Math.min(10.0, score)).toFixed(1);
+
+            appState.telemetry = {
+                overallScore: score,
+                highlightClippingPct: highlightPct,
+                shadowCrushingPct: shadowPct,
+                sharpness: sharpnessVal,
+                dynamicRange: `${tonalSpread} tonal spread (0–255)` ,
+                saturation: avgSat,
+                kelvin: kelvinEst,
+                palette: extractDominantPalette(data, 5),
+                histograms: { r: rBins, g: gBins, b: bBins }
+            };
+
+            updateTelemetryUI();
+            updateDiagnosticReportUI(highlightPct, shadowPct, meanLumVal, sharpnessVal, score);
+            updateStockTechnicalFindings(highlightPct, shadowPct, sharpnessVal, w, h);
+            redrawCanvas();
+            updateHistogramChart();
+            generateDiagnosticSummary();
+        }
+
+        function extractDominantPalette(data, colorsCount) {
+            let colors = [];
+            const step = Math.max(1, Math.floor(data.length / (colorsCount * 20)));
+            for (let i = 0; i < data.length; i += step * 4) {
+                colors.push(`rgb(${data[i]}, ${data[i+1]}, ${data[i+2]})`);
+                if (colors.length >= colorsCount) break;
+            }
+            return colors;
+        }
+
+        // Stock preflight: objective pixel measurements plus explicit human/legal gates.
+        const STOCK_CHECKS = [
+            ['focus', 'Focus and subject detail inspected at 100% (critical subject areas are sharp)'],
+            ['noise', 'Noise, banding, dust, sensor spots and compression artifacts inspected at 100%'],
+            ['retouch', 'Retouching is clean; no halos, cloning repeats, oversharpening or unnatural edges'],
+            ['composition', 'Composition, crop, horizon, distractions and usable copy space reviewed'],
+            ['rights', 'Copyright/ownership confirmed; no unlicensed artwork or protected content'],
+            ['releases', 'Model/property releases obtained where required, or editorial-only use confirmed'],
+            ['brands', 'Logos, trademarks, recognizable products and signage checked against target agency rules'],
+            ['authenticity', 'No misleading manipulation; AI-generated/AI-edited content handled per agency policy'],
+            ['metadata', 'Title, description and keywords are accurate, relevant, non-spammy and supported by image'],
+            ['policy', 'Target agency file format, dimensions, color profile, content policy and submission rules checked']
+        ];
+        function buildStockChecklist() {
+            const host = document.getElementById('stockChecklist');
+            if (!host || host.dataset.built) return;
+            host.dataset.built = '1';
+            STOCK_CHECKS.forEach(([id, label]) => {
+                const row = document.createElement('label');
+                row.className = 'flex items-start gap-2.5 p-3 rounded-xl bg-white/[0.03] border border-white/5 cursor-pointer';
+                const cb = document.createElement('input'); cb.type = 'checkbox'; cb.id = 'stock-check-' + id; cb.className = 'mt-0.5 accent-cyan-400'; cb.addEventListener('change', refreshStockCompliance);
+                const span = document.createElement('span'); span.textContent = label;
+                row.append(cb, span); host.appendChild(row);
+            });
+        }
+        function estimateSharpness(ctx, w, h) {
+            // Variance of a 4-neighbour luminance Laplacian; relative screening only, not a universal sharpness grade.
+            const sample = document.createElement('canvas'); const sw = Math.min(640, w), sh = Math.max(1, Math.round(h * sw / w));
+            sample.width = sw; sample.height = sh; const sc = sample.getContext('2d', {willReadFrequently:true});
+            sc.drawImage(ctx.canvas, 0, 0, sw, sh); const d = sc.getImageData(0,0,sw,sh).data;
+            const lum = new Float32Array(sw*sh); for(let i=0,j=0;i<d.length;i+=4,j++) lum[j]=0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2];
+            let sum=0,sum2=0,n=0; for(let y=1;y<sh-1;y+=2) for(let x=1;x<sw-1;x+=2){const i=y*sw+x; const v=4*lum[i]-lum[i-1]-lum[i+1]-lum[i-sw]-lum[i+sw];sum+=v;sum2+=v*v;n++;}
+            const variance=n ? Math.max(0,sum2/n-(sum/n)**2) : 0;
+            return Math.max(0,Math.min(100,Math.round(100*(1-Math.exp(-variance/180)))));
+        }
+        function estimateTonalSpread(data, total) {
+            const bins=new Uint32Array(256); for(let i=0;i<data.length;i+=4){const l=Math.round(.2126*data[i]+.7152*data[i+1]+.0722*data[i+2]);bins[l]++;}
+            const percentile=p=>{let target=total*p,acc=0;for(let i=0;i<256;i++){acc+=bins[i];if(acc>=target)return i;}return 255;};
+            return percentile(.99)-percentile(.01);
+        }
+        function estimateAverageSaturation(data,total) {
+            let sum=0;for(let i=0;i<data.length;i+=4){const r=data[i]/255,g=data[i+1]/255,b=data[i+2]/255,m=Math.max(r,g,b),mn=Math.min(r,g,b);sum+=(m===0?0:(m-mn)/m)*100;}return sum/total;
+        }
+        function updateStockTechnicalFindings(highlights, shadows, sharpness, w, h) {
+            const host=document.getElementById('stockTechnicalFindings'); if(!host)return; host.innerHTML='';
+            const findings=[]; const minEdge=Math.min(w,h);
+            findings.push({label:'Resolution',status:(w>=4_000_000 && h>=1)?'MEETS COMMON BASELINE':'CHECK SIZE',detail:`${w.toLocaleString()} × ${h.toLocaleString()} px (${(w*h/1e6).toFixed(1)} MP). Agencies set different minimums; confirm target requirements.` ,pass:w*h>=4_000_000});
+            findings.push({label:'Bright clipping proxy',status:parseFloat(highlights)>2?'REVIEW':'NO FLAG',detail:`${highlights}% of pixels are near-white in all RGB channels. Intentional white backgrounds/specular highlights may be valid; inspect context.`,pass:parseFloat(highlights)<=2});
+            findings.push({label:'Dark clipping proxy',status:parseFloat(shadows)>5?'REVIEW':'NO FLAG',detail:`${shadows}% of pixels are near-black in all RGB channels. Silhouettes/night scenes may be intentional; inspect shadow detail.`,pass:parseFloat(shadows)<=5});
+            findings.push({label:'Edge-detail proxy',status:sharpness<35?'REVIEW':'SCREEN ONLY',detail:`Relative Laplacian score ${sharpness}/100. This can be affected by subject texture, resizing and noise; it cannot verify focus on the intended subject.`,pass:sharpness>=35});
+            findings.push({label:'Noise / artifacts',status:'MANUAL 100% REVIEW',detail:'This lightweight browser pass does not reliably classify noise, banding, chromatic aberration, dust or compression artifacts.',pass:false});
+            findings.forEach(f=>{const el=document.createElement('div');el.className='p-3 rounded-xl border '+(f.pass?'border-emerald-500/20 bg-emerald-500/[0.04]':'border-amber-500/20 bg-amber-500/[0.04]');const head=document.createElement('div');head.className='flex justify-between gap-2 font-bold';const l=document.createElement('span');l.textContent=f.label;const st=document.createElement('span');st.className=f.pass?'text-emerald-300':'text-amber-300';st.textContent=f.status;const detail=document.createElement('p');detail.className='mt-1 text-slate-400';detail.textContent=f.detail;head.append(l,st);el.append(head,detail);host.appendChild(el);}); refreshStockCompliance();
+        }
+        function getStockComplianceData() {
+            const checks={}; STOCK_CHECKS.forEach(([id])=>{const el=document.getElementById('stock-check-'+id);checks[id]=!!(el&&el.checked);});
+            const checked=Object.values(checks).filter(Boolean).length;
+            return {targetAgency:document.getElementById('stockAgency')?.value||'',reviewNotes:document.getElementById('stockNotes')?.value||'',manualChecks:checks,manualChecksComplete:checked,totalManualChecks:STOCK_CHECKS.length,technicalStatus:document.getElementById('stockTechStatus')?.textContent||'Not run',overallStatus:checked===STOCK_CHECKS.length&&appState.imgElement?'MANUAL CHECKLIST COMPLETE — verify target agency rules':'NOT CLEARED — outstanding review required',disclaimer:'Preflight only; not an agency acceptance prediction or legal determination.'};
+        }
+        function refreshStockCompliance() {
+            const checked=STOCK_CHECKS.filter(([id])=>document.getElementById('stock-check-'+id)?.checked).length;
+            const total=STOCK_CHECKS.length; const tech=document.getElementById('stockTechStatus'); const manual=document.getElementById('stockManualStatus'); const badge=document.getElementById('stockGateBadge');
+            if(manual)manual.textContent=`${checked} / ${total} complete`;
+            const techReady=!!appState.imgElement && parseFloat(appState.telemetry.highlightClippingPct)<=2 && parseFloat(appState.telemetry.shadowCrushingPct)<=5 && Number(appState.telemetry.sharpness)>=35;
+            if(tech)tech.textContent=!appState.imgElement?'Awaiting image':(techReady?'No major threshold flags':'Review flags');
+            if(badge){const ready=!!appState.imgElement&&checked===total&&techReady;badge.textContent=ready?'CHECKLIST COMPLETE — VERIFY AGENCY':'NOT CLEARED / REVIEW REQUIRED';badge.className='px-2.5 py-1 rounded-full text-[10px] font-bold '+(ready?'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30':'bg-amber-500/10 text-amber-300 border border-amber-500/30');}
+        }
+        buildStockChecklist();
+        ['stockAgency','stockNotes'].forEach(id=>document.getElementById(id)?.addEventListener('input',refreshStockCompliance));
+
+        function updateTelemetryUI() {
+            const score = parseFloat(appState.telemetry.overallScore);
+            document.getElementById('overallScore').innerText = score.toFixed(1);
+            
+            // Gauge Animation
+            const circle = document.getElementById('gaugeProgress');
+            const circumference = 2 * Math.PI * 38;
+            const offset = circumference - (score / 10.0) * circumference;
+            circle.style.strokeDasharray = `${circumference} ${circumference}`;
+            circle.style.strokeDashoffset = offset;
+
+            const badge = document.getElementById('scoreBadge');
+            if (score >= 8.0) {
+                badge.className = 'inline-block px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30';
+                badge.innerText = 'Optimal Quality';
+            } else if (score >= 5.0) {
+                badge.className = 'inline-block px-3 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30';
+                badge.innerText = 'Moderate Issues';
+            } else {
+                badge.className = 'inline-block px-3 py-1 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-300 border border-rose-500/30';
+                badge.innerText = 'Critical Anomalies';
+            }
+
+            document.getElementById('metricHighlight').innerText = `${appState.telemetry.highlightClippingPct}%`;
+            document.getElementById('metricShadow').innerText = `${appState.telemetry.shadowCrushingPct}%`;
+            document.getElementById('metricSharpness').innerText = `${appState.telemetry.sharpness} / 100`;
+            document.getElementById('metricDynamicRange').innerText = appState.telemetry.dynamicRange;
+            document.getElementById('metricSaturation').innerText = appState.telemetry.saturation;
+            document.getElementById('metricKelvin').innerText = appState.telemetry.kelvin;
+
+            // Render Palette Swatches
+            const paletteContainer = document.getElementById('paletteContainer');
+            paletteContainer.innerHTML = '';
+            appState.telemetry.palette.forEach(color => {
+                const swatch = document.createElement('div');
+                swatch.className = 'flex-1 rounded-lg transition-transform hover:scale-105 cursor-pointer border border-white/10';
+                swatch.style.backgroundColor = color;
+                swatch.title = color;
+                paletteContainer.appendChild(swatch);
+            });
+
+            let summaryText = `Technical audit score: ${score}/10. `;
+            if (appState.telemetry.highlightClippingPct > 3) summaryText += `Blown highlights detected (${appState.telemetry.highlightClippingPct}%). `;
+            if (appState.telemetry.shadowCrushingPct > 5) summaryText += `Crushed shadows detected (${appState.telemetry.shadowCrushingPct}%). `;
+            document.getElementById('scoreSummary').innerText = summaryText;
+        }
+
+        function updateDiagnosticReportUI(highlightPct, shadowPct, meanLum, sharpness, score) {
+            const headerBadge = document.getElementById('reportHeaderBadge');
+            const summaryText = document.getElementById('reportSummaryText');
+
+            if (score >= 8.0) {
+                headerBadge.className = 'px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30';
+                headerBadge.innerText = 'Status: Excellent';
+                summaryText.innerText = `Pixel-screening score ${score}/10.0 only. This does not certify stock readiness: inspect at 100%, verify content rights/releases, and complete the Stock QA tab against the target agency's current rules.`;
+            } else if (score >= 5.0) {
+                headerBadge.className = 'px-3 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30';
+                headerBadge.innerText = 'Status: Caution';
+                summaryText.innerText = `Pixel-screening score ${score}/10.0. Review flagged tone metrics and complete all technical, content, release, rights and metadata checks in Stock QA before submission.`;
+            } else {
+                headerBadge.className = 'px-3 py-1 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-300 border border-rose-500/30';
+                headerBadge.innerText = 'Status: Needs Action';
+                summaryText.innerText = `Pixel-screening score ${score}/10.0 indicates review flags. This is not an agency rejection prediction; inspect the original at 100% and complete the Stock QA gates.`;
+            }
+
+            // Finding 1: Exposure
+            const expBadge = document.getElementById('findingExpBadge');
+            const expText = document.getElementById('findingExpText');
+            if (highlightPct > 5) {
+                expBadge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-300 border border-rose-500/30';
+                expBadge.innerText = 'Overexposed';
+                expText.innerText = `Blown highlights account for ${highlightPct}% of frame pixel volume. Pure white signal clipping detected.`;
+            } else if (shadowPct > 10) {
+                expBadge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30';
+                expBadge.innerText = 'Underexposed';
+                expText.innerText = `Crushed shadows account for ${shadowPct}% of frame pixel volume. Deep shadow clipping observed.`;
+            } else {
+                expBadge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30';
+                expBadge.innerText = 'Balanced';
+                expText.innerText = `Mean luminance level (${Math.round(meanLum)}) sits cleanly within linear exposure dynamic range (${appState.telemetry.dynamicRange}).`;
+            }
+
+            // Finding 2: Color
+            const colorBadge = document.getElementById('findingColorBadge');
+            const colorText = document.getElementById('findingColorText');
+            colorBadge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30';
+            colorBadge.innerText = 'Natural Tone';
+            colorText.innerText = `Measured average saturation is ${appState.telemetry.saturation}. White balance/color temperature cannot be reliably inferred from rendered RGB pixels alone; visually inspect against a known neutral reference.`;
+
+            // Finding 3: Sharpness
+            const sharpBadge = document.getElementById('findingSharpnessBadge');
+            const sharpText = document.getElementById('findingSharpnessText');
+            if (sharpness > 80) {
+                sharpBadge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30';
+                sharpBadge.innerText = 'Tack Sharp';
+                sharpText.innerText = `Edge sharpness measured at ${sharpness}/100. Excellent micro-contrast and micro-detail definition.`;
+            } else {
+                sharpBadge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30';
+                sharpBadge.innerText = 'Soft Detail';
+                sharpText.innerText = `Micro-contrast score (${sharpness}/100) indicates subtle optical softness or focal depth variance.`;
+            }
+
+            // Actionable Remediation List
+            const remList = document.getElementById('remediationList');
+            remList.innerHTML = '';
+            let checklist = [];
+
+            if (highlightPct > 3) checklist.push({ icon: 'sun', text: 'Reduce exposure by -0.7 EV in RAW editor to pull back clipped sky highlights.' });
+            if (shadowPct > 5) checklist.push({ icon: 'moon', text: 'Lift shadow tone curve gently to recover details in deep shadow areas.' });
+            if (sharpness < 75) checklist.push({ icon: 'aperture', text: 'Increase shutter speed or employ stabilization to eliminate shutter vibration.' });
+            if (checklist.length === 0) checklist.push({ icon: 'check-circle-2', text: 'No threshold-based exposure/sharpness flags detected. This does not mean the image passes stock-agency technical or legal review.' });
+
+            checklist.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'bg-white/[0.03] p-3 rounded-xl border border-white/5 flex items-start space-x-2.5';
+                div.innerHTML = `<i data-lucide="${item.icon}" class="w-4 h-4 text-cyan-400 shrink-0 mt-0.5"></i><span>${item.text}</span>`;
+                remList.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        function updateHistogramChart() {
+            if (!histogramChart) return;
+            histogramChart.data.datasets[0].data = appState.telemetry.histograms.r;
+            histogramChart.data.datasets[1].data = appState.telemetry.histograms.g;
+            histogramChart.data.datasets[2].data = appState.telemetry.histograms.b;
+            histogramChart.update();
+        }
+
+        // EXIF Metadata Inspector
+        function parseEXIFData(file, imgElement) {
+            EXIF.getData(file, function() {
+                const allTags = EXIF.getAllTags(this);
+                
+                const make = allTags.Make || appState.exifData.Make || 'Not present in metadata';
+                const model = allTags.Model || appState.exifData.Model || 'Not present in metadata';
+                const lens = allTags.LensModel || appState.exifData.LensModel || 'Not present in metadata';
+                const focal = allTags.FocalLength ? `${allTags.FocalLength}mm` : (appState.exifData.FocalLength || 'Not present');
+                const aperture = allTags.FNumber ? `f/${allTags.FNumber}` : (appState.exifData.FNumber || 'Not present');
+                const shutter = allTags.ExposureTime ? `1/${Math.round(1/allTags.ExposureTime)}s` : (appState.exifData.ExposureTime ? `${1 / Number(appState.exifData.ExposureTime)}s (sample metadata)` : 'Not present');
+                const iso = allTags.ISOSpeedRatings ? `${allTags.ISOSpeedRatings}` : (appState.exifData.ISOSpeedRatings || 'Not present');
+                const date = allTags.DateTimeOriginal || appState.exifData.DateTimeOriginal || 'Not present in metadata';
+                const colorSpace = allTags.ColorSpace === 1 ? 'sRGB IEC61966-2.1' : (allTags.ColorSpace === 2 ? 'Uncalibrated / vendor-defined' : 'Unknown / not present');
+
+                document.getElementById('exifMake').innerText = make;
+                document.getElementById('exifModel').innerText = model;
+                document.getElementById('exifLens').innerText = lens;
+                document.getElementById('exifFocal').innerText = focal;
+                document.getElementById('exifDate').innerText = date;
+                document.getElementById('exifColorSpace').innerText = colorSpace;
+
+                document.getElementById('exifAperture').innerText = aperture;
+                document.getElementById('exifShutter').innerText = shutter;
+                document.getElementById('exifISO').innerText = iso;
+
+                evaluateWarnings(iso, appState.telemetry.highlightClippingPct);
+            });
+        }
+
+        function evaluateWarnings(isoStr, highlightPct) {
+            const container = document.getElementById('warningsContainer');
+            container.innerHTML = '';
+            let warnings = [];
+
+            const isoNum = parseInt(isoStr) || 100;
+            if (isoNum > 3200) {
+                warnings.push({ type: 'critical', text: `High ISO setting (${isoNum}). Luminance noise risk elevated.` });
+            } else if (isoNum > 1600) {
+                warnings.push({ type: 'warning', text: `Elevated ISO setting (${isoNum}). Subtle noise grain present.` });
+            }
+
+            if (parseFloat(highlightPct) > 3.0) {
+                warnings.push({ type: 'warning', text: `Clipping risk flagged in highlight channels (${highlightPct}%).` });
+            }
+
+            if (warnings.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white/[0.03] p-3 rounded-xl border border-emerald-500/30 text-xs text-emerald-300 flex items-center space-x-2.5">
+                        <i data-lucide="shield-check" class="w-4 h-4 shrink-0 text-emerald-400"></i>
+                        <span>No metadata-based warning was detected. Missing metadata and visual noise/artifacts still require review.</span>
+                    </div>
+                `;
+            } else {
+                warnings.forEach(w => {
+                    const div = document.createElement('div');
+                    div.className = `p-3 rounded-xl border text-xs flex items-center space-x-2.5 ${w.type === 'critical' ? 'bg-rose-500/10 border-rose-500/30 text-rose-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-300'}`;
+                    div.innerHTML = `<i data-lucide="${w.type === 'critical' ? 'alert-triangle' : 'alert-circle'}" class="w-4 h-4 shrink-0"></i><span>${w.text}</span>`;
+                    container.appendChild(div);
+                });
+            }
+            lucide.createIcons();
+        }
+
+        // Interactive Canvas Overlays & Zoom
+        function redrawCanvas() {
+            if (!appState.imgElement) return;
+
+            const img = appState.imgElement;
+            const container = document.getElementById('canvasContainer');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(canvas.width / 2 + appState.panX, canvas.height / 2 + appState.panY);
+            ctx.scale(appState.zoom, appState.zoom);
+
+            const scale = Math.min((canvas.width * 0.85) / img.width, (canvas.height * 0.85) / img.height);
+            const drawW = img.width * scale;
+            const drawH = img.height * scale;
+            const drawX = -drawW / 2;
+            const drawY = -drawH / 2;
+
+            ctx.drawImage(img, drawX, drawY, drawW, drawH);
+
+            if (appState.clippingMaskActive) {
+                const offCanvas = document.createElement('canvas');
+                offCanvas.width = drawW;
+                offCanvas.height = drawH;
+                const oCtx = offCanvas.getContext('2d');
+                oCtx.drawImage(img, 0, 0, drawW, drawH);
+                const imgData = oCtx.getImageData(0, 0, drawW, drawH);
+                const data = imgData.data;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i], g = data[i+1], b = data[i+2];
+                    if (r > 245 && g > 245 && b > 245) {
+                        data[i] = 244; data[i+1] = 63; data[i+2] = 94; data[i+3] = 220; // Rose hot spots
+                    } else if (r < 10 && g < 10 && b < 10) {
+                        data[i] = 0; data[i+1] = 240; data[i+2] = 255; data[i+3] = 220; // Cyan shadow spots
+                    } else {
+                        data[i+3] = 0;
+                    }
+                }
+                oCtx.putImageData(imgData, 0, 0);
+                ctx.drawImage(offCanvas, drawX, drawY);
+            }
+
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
+            ctx.lineWidth = 1.5 / appState.zoom;
+
+            if (appState.overlays.thirds) {
+                const w3 = drawW / 3;
+                const h3 = drawH / 3;
+                ctx.beginPath();
+                ctx.moveTo(drawX + w3, drawY); ctx.lineTo(drawX + w3, drawY + drawH);
+                ctx.moveTo(drawX + w3 * 2, drawY); ctx.lineTo(drawX + w3 * 2, drawY + drawH);
+                ctx.moveTo(drawX, drawY + h3); ctx.lineTo(drawX + drawW, drawY + h3);
+                ctx.moveTo(drawX, drawY + h3 * 2); ctx.lineTo(drawX + drawW, drawY + h3 * 2);
+                ctx.stroke();
+            }
+
+            if (appState.overlays.phi) {
+                const w1 = drawW * 0.382;
+                const w2 = drawW * 0.618;
+                const h1 = drawH * 0.382;
+                const h2 = drawH * 0.618;
+                ctx.beginPath();
+                ctx.moveTo(drawX + w1, drawY); ctx.lineTo(drawX + w1, drawY + drawH);
+                ctx.moveTo(drawX + w2, drawY); ctx.lineTo(drawX + w2, drawY + drawH);
+                ctx.moveTo(drawX, drawY + h1); ctx.lineTo(drawX + drawW, drawY + h1);
+                ctx.moveTo(drawX, drawY + h2); ctx.lineTo(drawX + drawW, drawY + h2);
+                ctx.stroke();
+            }
+
+            if (appState.overlays.crosshair) {
+                ctx.beginPath();
+                ctx.moveTo(drawX + drawW / 2 - 20, drawY + drawH / 2); ctx.lineTo(drawX + drawW / 2 + 20, drawY + drawH / 2);
+                ctx.moveTo(drawX + drawW / 2, drawY + drawH / 2 - 20); ctx.lineTo(drawX + drawW / 2, drawY + drawH / 2 + 20);
+                ctx.stroke();
+            }
+
+            if (appState.overlays.framing) {
+                ctx.strokeRect(drawX, drawY, drawW, drawH);
+            }
+
+            ctx.restore();
+        }
+
+        function toggleOverlay(type) {
+            appState.overlays[type] = !appState.overlays[type];
+            const btn = document.getElementById(`btn-${type}`);
+            if (appState.overlays[type]) {
+                btn.classList.add('bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/30');
+                btn.classList.remove('text-slate-400');
+            } else {
+                btn.classList.remove('bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/30');
+                btn.classList.add('text-slate-400');
+            }
+            redrawCanvas();
+        }
+
+        function toggleClippingMask() {
+            appState.clippingMaskActive = !appState.clippingMaskActive;
+            const btn = document.getElementById('btn-clipping');
+            if (appState.clippingMaskActive) {
+                btn.classList.add('bg-rose-500/20', 'text-rose-300', 'border', 'border-rose-500/30');
+            } else {
+                btn.classList.remove('bg-rose-500/20', 'text-rose-300', 'border', 'border-rose-500/30');
+            }
+            redrawCanvas();
+        }
+
+        function zoomCanvas(delta) {
+            appState.zoom = Math.max(0.2, Math.min(5.0, appState.zoom + delta));
+            document.getElementById('infoZoom').innerText = `${Math.round(appState.zoom * 100)}%`;
+            redrawCanvas();
+        }
+
+        function resetZoom() {
+            appState.zoom = 1;
+            appState.panX = 0;
+            appState.panY = 0;
+            document.getElementById('infoZoom').innerText = '100%';
+            redrawCanvas();
+        }
+
+        const container = document.getElementById('canvasContainer');
+        container.addEventListener('mousedown', (e) => {
+            appState.isDragging = true;
+            appState.startX = e.clientX - appState.panX;
+            appState.startY = e.clientY - appState.panY;
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (!appState.isDragging) return;
+            appState.panX = e.clientX - appState.startX;
+            appState.panY = e.clientY - appState.startY;
+            redrawCanvas();
+        });
+        window.addEventListener('mouseup', () => { appState.isDragging = false; });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!appState.imgElement) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const p = ctx.getImageData(x, y, 1, 1).data;
+            document.getElementById('pixelInspect').innerText = `RGB: [${p[0]}, ${p[1]}, ${p[2]}]`;
+        });
+
+        function generateDiagnosticSummary() {
+            const summary = `=== LUMIAUDIT STUDIO FORENSIC REPORT ===
+File Name: ${appState.imageName}
+Resolution: ${appState.imageWidth} x ${appState.imageHeight} px
+Pixel-screening score (not an agency score): ${appState.telemetry.overallScore} / 10.0
+Blown Highlights: ${appState.telemetry.highlightClippingPct}%
+Crushed Shadows: ${appState.telemetry.shadowCrushingPct}%
+Sharpness Score: ${appState.telemetry.sharpness} / 100
+Dynamic Range: ${appState.telemetry.dynamicRange}
+Color temperature: not inferred from rendered pixels
+Camera & Lens: ${document.getElementById('exifMake').innerText} ${document.getElementById('exifModel').innerText} | ${document.getElementById('exifLens').innerText}
+Exposure Triangle: ${document.getElementById('exifAperture').innerText}, ${document.getElementById('exifShutter').innerText}, ISO ${document.getElementById('exifISO').innerText}`;
+            
+            document.getElementById('summaryTextarea').value = summary;
+        }
+
+        function copyDiagnosticSummary() {
+            const text = document.getElementById('summaryTextarea').value;
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('Diagnostic report copied to clipboard');
+            } catch (err) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('Diagnostic report copied to clipboard');
+                });
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function exportJSONAudit() {
+            const auditData = {
+                studioVersion: "5.0-stock-preflight",
+                stockCompliance: getStockComplianceData(),
+                filename: appState.imageName,
+                dimensions: { width: appState.imageWidth, height: appState.imageHeight },
+                telemetry: appState.telemetry,
+                exif: {
+                    make: document.getElementById('exifMake').innerText,
+                    model: document.getElementById('exifModel').innerText,
+                    lens: document.getElementById('exifLens').innerText,
+                    focalLength: document.getElementById('exifFocal').innerText,
+                    aperture: document.getElementById('exifAperture').innerText,
+                    shutterSpeed: document.getElementById('exifShunter').innerText,
+                    iso: document.getElementById('exifISO').innerText,
+                    captureDate: document.getElementById('exifDate').innerText
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            const blob = new Blob([JSON.stringify(auditData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${(appState.imageName || 'image').replace(/\.[^.]+$/, '')}_audit_report.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('JSON audit file exported');
+        }
+
+        function downloadAnnotatedSnapshot() {
+            const link = document.createElement('a');
+            link.download = `${(appState.imageName || 'image').replace(/\.[^.]+$/, '')}_annotated.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            showToast('Annotated PNG snapshot downloaded');
+        }
+
+        window.addEventListener('resize', () => {
+            redrawCanvas();
+        });
+    </script>
+</body>
+</html>
