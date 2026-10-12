@@ -225,13 +225,13 @@
                 <canvas id="imageCanvas" class="max-w-full max-h-full object-contain transition-transform duration-75"></canvas>
                 
                 <!-- Dedicated Large Live Preview Canvas for Edit Tab -->
-                <div id="editorLeftPreviewWrapper" class="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6 hidden z-20">
-                    <div class="absolute top-4 left-4 flex items-center space-x-2 bg-cyan-500/10 border border-cyan-500/20 px-3 py-1.5 rounded-full text-cyan-300 text-xs font-bold">
+                <div id="editorLeftPreviewWrapper" class="absolute inset-0 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-6 hidden z-20">
+                    <div class="absolute top-4 left-4 flex items-center space-x-2 bg-cyan-500/10 border border-cyan-500/20 px-3 py-1.5 rounded-full text-cyan-300 text-xs font-bold shadow-lg">
                         <i data-lucide="wand-sparkles" class="w-3.5 h-3.5"></i>
-                        <span>Live Edited Canvas Preview</span>
+                        <span>Persistent Live Edited Preview</span>
                     </div>
-                    <canvas id="editorAfterCanvas" class="max-w-full max-h-[80%] rounded-xl shadow-2xl object-contain"></canvas>
-                    <p class="text-[11px] text-slate-400 mt-3">Updates live as you adjust the sliders on the right.</p>
+                    <canvas id="editorAfterCanvas" class="max-w-full max-h-[82%] rounded-xl shadow-2xl object-contain"></canvas>
+                    <p class="text-[11px] text-slate-400 mt-3 font-medium">Updates in real time as you adjust your editing sliders.</p>
                 </div>
             </div>
 
@@ -543,7 +543,7 @@
                 <div id="tab-editor" class="space-y-4 hidden">
                     <div class="glass-panel p-4 space-y-2 rounded-2xl border border-cyan-500/20">
                         <h4 class="text-sm font-extrabold text-white flex items-center gap-2"><i data-lucide="wand-sparkles" class="w-4 h-4 text-cyan-300"></i>Basic photo editor</h4>
-                        <p class="text-[11px] text-slate-400 leading-relaxed">The live preview is now displayed prominently on the left viewport panel. Your original image is untouched; download a separate edited copy when ready.</p>
+                        <p class="text-[11px] text-slate-400 leading-relaxed">The live preview is permanently displayed on the left viewport pane so you can see your adjustments clearly at all times. Your original remains untouched; download an edited copy when ready.</p>
                         <div id="editorEmptyState" class="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">Upload a photo first to enable editing.</div>
                     </div>
 
